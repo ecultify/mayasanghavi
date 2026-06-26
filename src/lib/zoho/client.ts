@@ -139,26 +139,78 @@ export async function coqlQuery(
   return rows;
 }
 
-// Build the year-independent recurring date match. Zoho COQL exposes day() and
-// month() functions over date fields, so we match month and day against the
-// target date regardless of year (a birthday/anniversary recurs annually).
-function buildDateMatchQuery(
-  module: ZohoModule,
-  dateField: ZohoDateField,
-  month: number,
-  day: number,
-  extraCriteria?: string | null,
-): string {
-  // Zoho COQL requires at least one always-true-ish base predicate; the date
-  // field is guaranteed non-null for a match because day()/month() need a value.
-  let where = `(day(${dateField}) = ${day} and month(${dateField}) = ${month})`;
-  if (extraCriteria && extraCriteria.trim() !== "") {
-    where = `(${where} and (${extraCriteria.trim()}))`;
+// Run a single COQL page and surface the cursor pagination info, so callers can
+// implement "load more" style cursor pagination (one page per request).
+export async function coqlQueryPage(
+  selectQuery: string,
+  pageToken?: string | null,
+): Promise<{
+  rows: Array<Record<string, unknown>>;
+  moreRecords: boolean;
+  nextPageToken: string | null;
+}> {
+  const body: Record<string, unknown> = { select_query: selectQuery };
+  if (pageToken) body.page_token = pageToken;
+
+  const res = await zohoFetch("/crm/v8/coql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  // 204 = no records.
+  if (res.status === 204) {
+    return { rows: [], moreRecords: false, nextPageToken: null };
   }
-  return `select ${SELECT_FIELDS} from ${module} where ${where} limit 2000`;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Zoho COQL failed (${res.status}): ${text}`);
+  }
+
+  const data = (await res.json()) as CoqlResponse;
+  return {
+    rows: data.data ?? [],
+    moreRecords: data.info?.more_records ?? false,
+    nextPageToken: data.info?.next_page_token ?? null,
+  };
 }
 
-// Query a single module for records whose date_field matches the target month/day.
+// Build the candidate query. Zoho COQL does NOT support DAY, MONTH, or EXTRACT
+// functions (they fail with INVALID_QUERY), so we only filter to records whose
+// raw date field is set, then match the month and day in TypeScript below.
+// Only the raw fields Date_of_Birth and Anniversary_Date are used, never the
+// unreliable formula fields (Birth_date, anniversary_dates, husband_birthday),
+// which rewrite the year to a hardcoded 2025, are often null, and do not exist
+// on the Leads module.
+function buildCandidateQuery(
+  module: ZohoModule,
+  dateField: ZohoDateField,
+  extraCriteria?: string | null,
+): string {
+  let where = `${dateField} is not null`;
+  if (extraCriteria && extraCriteria.trim() !== "") {
+    where = `(${where}) and (${extraCriteria.trim()})`;
+  }
+  return `select First_Name, Last_Name, Mobile, ${dateField} from ${module} where ${where} limit 2000`;
+}
+
+// Compare a Zoho date value (YYYY-MM-DD, for example 1994-06-29) against the
+// target month and day, ignoring the year entirely. A birthday or anniversary
+// recurs annually, so only the month (index 1) and day (index 2) matter.
+function matchesMonthDay(
+  value: string | null | undefined,
+  month: number,
+  day: number,
+): boolean {
+  if (!value) return false;
+  const parts = String(value).split("-");
+  if (parts.length < 3) return false;
+  return Number(parts[1]) === month && Number(parts[2]) === day;
+}
+
+// Query a single module for records whose date_field matches the target month
+// and day. COQL pulls every record with the date set (paginated past the
+// 2000-row limit), then the month/day match happens in TypeScript.
 export async function queryByMonthDay(
   module: ZohoModule,
   dateField: ZohoDateField,
@@ -166,18 +218,67 @@ export async function queryByMonthDay(
   day: number,
   extraCriteria?: string | null,
 ): Promise<ZohoRecord[]> {
-  const query = buildDateMatchQuery(module, dateField, month, day, extraCriteria);
+  const query = buildCandidateQuery(module, dateField, extraCriteria);
   const rows = await coqlQuery(query);
-  return rows.map((r) => ({
-    id: String(r.id ?? ""),
-    First_Name: (r.First_Name as string) ?? null,
-    Last_Name: (r.Last_Name as string) ?? null,
-    Mobile: (r.Mobile as string) ?? null,
-    Email: (r.Email as string) ?? null,
-    Date_of_Birth: (r.Date_of_Birth as string) ?? null,
-    Anniversary_Date: (r.Anniversary_Date as string) ?? null,
-    __module: module,
-  }));
+  const matched: ZohoRecord[] = [];
+  for (const r of rows) {
+    const dateValue = (r[dateField] as string) ?? null;
+    if (!matchesMonthDay(dateValue, month, day)) continue;
+    matched.push({
+      id: String(r.id ?? ""),
+      First_Name: (r.First_Name as string) ?? null,
+      Last_Name: (r.Last_Name as string) ?? null,
+      Mobile: (r.Mobile as string) ?? null,
+      Email: null,
+      Date_of_Birth: dateField === "Date_of_Birth" ? dateValue : null,
+      Anniversary_Date: dateField === "Anniversary_Date" ? dateValue : null,
+      __module: module,
+    });
+  }
+  return matched;
+}
+
+// ==== Leads viewer ====
+export interface LeadRow {
+  id: string;
+  First_Name: string | null;
+  Last_Name: string | null;
+  Mobile: string | null;
+  Email: string | null;
+  Date_of_Birth: string | null;
+  Anniversary_Date: string | null;
+}
+
+export interface LeadsPage {
+  rows: LeadRow[];
+  moreRecords: boolean;
+  nextPageToken: string | null;
+}
+
+// Fetch one page of Leads ordered by Last_Name (200 per page), with cursor
+// pagination. Reuses the shared auth and COQL helpers (no duplicated token logic).
+export async function listLeadsPage(
+  pageToken?: string | null,
+): Promise<LeadsPage> {
+  // COQL needs a WHERE clause; id is always present, so this returns all leads.
+  const query = `select ${SELECT_FIELDS} from Leads where id is not null order by Last_Name limit 200`;
+  const { rows, moreRecords, nextPageToken } = await coqlQueryPage(
+    query,
+    pageToken,
+  );
+  return {
+    rows: rows.map((r) => ({
+      id: String(r.id ?? ""),
+      First_Name: (r.First_Name as string) ?? null,
+      Last_Name: (r.Last_Name as string) ?? null,
+      Mobile: (r.Mobile as string) ?? null,
+      Email: (r.Email as string) ?? null,
+      Date_of_Birth: (r.Date_of_Birth as string) ?? null,
+      Anniversary_Date: (r.Anniversary_Date as string) ?? null,
+    })),
+    moreRecords,
+    nextPageToken,
+  };
 }
 
 // Query one or both modules (Contacts, Leads, or both) for a month/day match.

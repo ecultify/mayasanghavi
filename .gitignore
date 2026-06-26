@@ -36,6 +36,6 @@ drizzle/meta/_journal.json.bak
 .vscode/*
 !.vscode/extensions.json
 
-# logs
-logs
+# logs (root-level build/output logs only, not source dirs named "logs")
+/logs
 *.log

@@ -1,7 +1,7 @@
 "use client";
 
-import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Plus, Trash2, RefreshCw } from "lucide-react";
 import {
@@ -19,7 +19,6 @@ import {
 } from "@/components/status-badge";
 import { EmptyState } from "@/components/page-header";
 import { DeleteConfirm } from "@/components/delete-confirm";
-import { CreateTemplateDialog } from "@/components/templates/create-template-dialog";
 import { deleteTemplateAction } from "@/app/actions";
 import type { NormalizedTemplate } from "@/lib/meta/types";
 
@@ -29,7 +28,6 @@ export function TemplatesManager({
   initialTemplates: NormalizedTemplate[];
 }) {
   const router = useRouter();
-  const [createOpen, setCreateOpen] = React.useState(false);
 
   async function removeTemplate(name: string) {
     const res = await deleteTemplateAction(name);
@@ -52,9 +50,11 @@ export function TemplatesManager({
           <RefreshCw className="h-4 w-4" />
           Refresh
         </Button>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          New template
+        <Button asChild>
+          <Link href="/templates/new">
+            <Plus className="h-4 w-4" />
+            New template
+          </Link>
         </Button>
       </div>
 
@@ -129,8 +129,6 @@ export function TemplatesManager({
           </Table>
         </div>
       )}
-
-      <CreateTemplateDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   );
 }

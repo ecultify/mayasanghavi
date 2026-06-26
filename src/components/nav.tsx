@@ -8,6 +8,7 @@ import {
   FileText,
   ScrollText,
   Send,
+  Users,
   Gem,
 } from "lucide-react";
 import {
@@ -27,6 +28,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 const links = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
   { href: "/rules", label: "Rules", icon: ListChecks },
+  { href: "/leads", label: "Leads", icon: Users },
   { href: "/templates", label: "Templates", icon: FileText },
   { href: "/logs", label: "Logs", icon: ScrollText },
   { href: "/test", label: "Manual test", icon: Send },

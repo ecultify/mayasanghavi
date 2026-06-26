@@ -18,6 +18,7 @@ import {
 } from "@/lib/meta/client";
 import type { CreateTemplateInput } from "@/lib/meta/types";
 import { sendTemplate } from "@/lib/meta/client";
+import { listLeadsPage } from "@/lib/zoho/client";
 import { normalizeMobile } from "@/lib/phone";
 import { runWorker } from "@/lib/worker";
 import { db } from "@/lib/db";
@@ -184,6 +185,19 @@ export async function uploadMediaAction(
       return { ok: false, error: result.errorDetail ?? "Upload failed" };
     }
     return { ok: true, data: { handle: result.handle } };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// ================ Leads ================
+
+export async function fetchLeadsAction(
+  pageToken?: string | null,
+): Promise<ActionResult> {
+  try {
+    const page = await listLeadsPage(pageToken);
+    return { ok: true, data: page };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { PageHeader, ErrorState } from "@/components/page-header";
+import { ToolbarSkeleton, TableSkeleton } from "@/components/skeletons";
 import { RulesManager } from "@/components/rules/rules-manager";
 import { listRules } from "@/lib/services/rules";
 import { listTemplates } from "@/lib/meta/client";
@@ -7,7 +9,7 @@ import type { Rule } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 
-export default async function RulesPage() {
+async function RulesData() {
   let rules: Rule[] = [];
   let rulesError: string | null = null;
   try {
@@ -15,8 +17,9 @@ export default async function RulesPage() {
   } catch (err) {
     rulesError = err instanceof Error ? err.message : String(err);
   }
+  if (rulesError) return <ErrorState message={rulesError} />;
 
-  // Templates power the dropdown; a Meta failure should not block rule editing.
+  // A Meta failure should not block rule editing; the dropdown just stays empty.
   let templates: NormalizedTemplate[] = [];
   let templatesError: string | null = null;
   try {
@@ -28,20 +31,31 @@ export default async function RulesPage() {
   }
 
   return (
+    <RulesManager
+      initialRules={rules}
+      templates={templates}
+      templatesError={templatesError}
+    />
+  );
+}
+
+export default function RulesPage() {
+  return (
     <div>
       <PageHeader
         title="Automation rules"
         description="Each enabled rule queries Zoho daily and sends an approved WhatsApp template to every matching, deduped recipient."
       />
-      {rulesError ? (
-        <ErrorState message={rulesError} />
-      ) : (
-        <RulesManager
-          initialRules={rules}
-          templates={templates}
-          templatesError={templatesError}
-        />
-      )}
+      <Suspense
+        fallback={
+          <div className="space-y-4">
+            <ToolbarSkeleton />
+            <TableSkeleton rows={5} cols={7} />
+          </div>
+        }
+      >
+        <RulesData />
+      </Suspense>
     </div>
   );
 }

@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, Upload, Variable } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -33,13 +32,8 @@ import type {
 
 const HAS_VAR = /\{\{\s*\d+\s*\}\}/;
 
-export function CreateTemplateDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+// Full-page template builder. On success it returns to the templates list.
+export function TemplateForm() {
   const router = useRouter();
   const bodyRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -63,25 +57,6 @@ export function CreateTemplateDialog({
   const [submitting, setSubmitting] = React.useState(false);
 
   const bodyHasVar = HAS_VAR.test(body);
-
-  function reset() {
-    setName("");
-    setLanguage("en_US");
-    setCategory("MARKETING");
-    setHeaderType("NONE");
-    setHeaderText("");
-    setBody("");
-    setBodyExample("");
-    setFooter("");
-    setButtons([]);
-    setMediaHandle(null);
-    setPreviewUrl(null);
-    setUploading(false);
-  }
-
-  React.useEffect(() => {
-    if (open) reset();
-  }, [open]);
 
   // Insert a {{1}} variable at the cursor in the body field.
   function insertVariable() {
@@ -124,7 +99,10 @@ export function CreateTemplateDialog({
   }
 
   function addButton(type: "QUICK_REPLY" | "URL") {
-    setButtons((b) => [...b, { type, text: "", url: type === "URL" ? "" : undefined }]);
+    setButtons((b) => [
+      ...b,
+      { type, text: "", url: type === "URL" ? "" : undefined },
+    ]);
   }
 
   function updateButton(idx: number, patch: Partial<TemplateButton>) {
@@ -175,7 +153,8 @@ export function CreateTemplateDialog({
       category,
       headerType,
       headerText: headerType === "TEXT" ? headerText : undefined,
-      headerImageHandle: headerType === "IMAGE" ? mediaHandle ?? undefined : undefined,
+      headerImageHandle:
+        headerType === "IMAGE" ? mediaHandle ?? undefined : undefined,
       body,
       bodyExample: bodyHasVar ? bodyExample : undefined,
       footer: footer.trim() || undefined,
@@ -194,21 +173,20 @@ export function CreateTemplateDialog({
     toast.success(
       `Template submitted. Status: ${data.status ?? "PENDING"}. It will appear as Approved or Rejected after Meta review.`,
     );
-    onOpenChange(false);
+    router.push("/templates");
     router.refresh();
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>New template</DialogTitle>
-          <DialogDescription>
-            Build a template and submit it to Meta for approval. Approval can
-            take a few minutes to a few hours.
-          </DialogDescription>
-        </DialogHeader>
-
+    <Card className="max-w-2xl">
+      <CardHeader>
+        <CardTitle>Template details</CardTitle>
+        <CardDescription>
+          Build a template and submit it to Meta for approval. Approval can take
+          a few minutes to a few hours.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">
           {/* Name + language */}
           <div className="grid grid-cols-2 gap-4">
@@ -218,7 +196,9 @@ export function CreateTemplateDialog({
                 id="tpl-name"
                 value={name}
                 onChange={(e) =>
-                  setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))
+                  setName(
+                    e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+                  )
                 }
                 placeholder="maya_diwali_offer"
                 required
@@ -451,11 +431,11 @@ export function CreateTemplateDialog({
             </div>
           </div>
 
-          <DialogFooter>
+          <div className="flex justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => router.push("/templates")}
               disabled={submitting}
             >
               Cancel
@@ -463,9 +443,9 @@ export function CreateTemplateDialog({
             <Button type="submit" disabled={submitting || uploading}>
               {submitting ? "Submitting..." : "Submit to Meta"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   );
 }
