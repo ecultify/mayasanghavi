@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Three-layer CSS token architecture.
+  Layer 1: primitive tokens (raw, brand-agnostic values).
+  Layer 2: semantic tokens (meaning: background, foreground, primary, ...).
+  Layer 3: component tokens (per-component overrides, defined alongside components).
+  Dark mode flips the semantic layer only, via the .dark class.
+*/
+
+@layer base {
+  :root {
+    /* ==== Layer 1: primitive tokens ==== */
+    /* Neutral black and white scale (zinc). Status hues kept only for badges. */
+    --primitive-white: 0 0% 100%;
+    --primitive-black: 0 0% 0%;
+    --primitive-neutral-50: 0 0% 98%;
+    --primitive-neutral-100: 0 0% 96%;
+    --primitive-neutral-200: 0 0% 90%;
+    --primitive-neutral-300: 0 0% 83%;
+    --primitive-neutral-400: 0 0% 64%;
+    --primitive-neutral-500: 0 0% 45%;
+    --primitive-neutral-700: 0 0% 25%;
+    --primitive-neutral-800: 0 0% 15%;
+    --primitive-neutral-900: 0 0% 9%;
+    --primitive-neutral-950: 0 0% 4%;
+    /* Functional status colors (only used by badges that must signal meaning). */
+    --primitive-green-600: 142 71% 36%;
+    --primitive-green-500: 142 69% 45%;
+    --primitive-amber-500: 38 92% 50%;
+    --primitive-red-600: 0 72% 45%;
+    --primitive-red-500: 0 74% 55%;
+
+    /* ==== Layer 2: semantic tokens (light) ==== */
+    --color-background: var(--primitive-white);
+    --color-foreground: var(--primitive-neutral-900);
+    --color-card: var(--primitive-white);
+    --color-card-foreground: var(--primitive-neutral-900);
+    --color-popover: var(--primitive-white);
+    --color-popover-foreground: var(--primitive-neutral-900);
+    --color-primary: var(--primitive-neutral-900);
+    --color-primary-foreground: var(--primitive-neutral-50);
+    --color-secondary: var(--primitive-neutral-100);
+    --color-secondary-foreground: var(--primitive-neutral-900);
+    --color-muted: var(--primitive-neutral-100);
+    --color-muted-foreground: var(--primitive-neutral-500);
+    --color-accent: var(--primitive-neutral-100);
+    --color-accent-foreground: var(--primitive-neutral-900);
+    --color-destructive: var(--primitive-red-600);
+    --color-destructive-foreground: var(--primitive-neutral-50);
+    --color-success: var(--primitive-green-600);
+    --color-success-foreground: var(--primitive-neutral-50);
+    --color-warning: var(--primitive-amber-500);
+    --color-warning-foreground: var(--primitive-neutral-900);
+    --color-border: var(--primitive-neutral-200);
+    --color-input: var(--primitive-neutral-200);
+    --color-ring: var(--primitive-neutral-400);
+
+    /* Sidebar (shadcn Sidebar component), light. */
+    --sidebar-background: var(--primitive-neutral-50);
+    --sidebar-foreground: var(--primitive-neutral-700);
+    --sidebar-primary: var(--primitive-neutral-900);
+    --sidebar-primary-foreground: var(--primitive-neutral-50);
+    --sidebar-accent: var(--primitive-neutral-200);
+    --sidebar-accent-foreground: var(--primitive-neutral-900);
+    --sidebar-border: var(--primitive-neutral-200);
+    --sidebar-ring: var(--primitive-neutral-400);
+
+    /* Sharp, but with a slightly softer button/control radius. */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* ==== Layer 2: semantic tokens (dark) ==== */
+    --color-background: var(--primitive-black);
+    --color-foreground: var(--primitive-neutral-50);
+    --color-card: var(--primitive-neutral-950);
+    --color-card-foreground: var(--primitive-neutral-50);
+    --color-popover: var(--primitive-neutral-950);
+    --color-popover-foreground: var(--primitive-neutral-50);
+    --color-primary: var(--primitive-neutral-50);
+    --color-primary-foreground: var(--primitive-neutral-900);
+    --color-secondary: var(--primitive-neutral-800);
+    --color-secondary-foreground: var(--primitive-neutral-50);
+    --color-muted: var(--primitive-neutral-800);
+    --color-muted-foreground: var(--primitive-neutral-400);
+    --color-accent: var(--primitive-neutral-800);
+    --color-accent-foreground: var(--primitive-neutral-50);
+    --color-destructive: var(--primitive-red-500);
+    --color-destructive-foreground: var(--primitive-neutral-50);
+    --color-success: var(--primitive-green-500);
+    --color-success-foreground: var(--primitive-neutral-950);
+    --color-warning: var(--primitive-amber-500);
+    --color-warning-foreground: var(--primitive-neutral-950);
+    --color-border: var(--primitive-neutral-800);
+    --color-input: var(--primitive-neutral-800);
+    --color-ring: var(--primitive-neutral-500);
+
+    /* Sidebar (shadcn Sidebar component), dark. */
+    --sidebar-background: var(--primitive-neutral-950);
+    --sidebar-foreground: var(--primitive-neutral-400);
+    --sidebar-primary: var(--primitive-neutral-50);
+    --sidebar-primary-foreground: var(--primitive-neutral-900);
+    --sidebar-accent: var(--primitive-neutral-800);
+    --sidebar-accent-foreground: var(--primitive-neutral-50);
+    --sidebar-border: var(--primitive-neutral-800);
+    --sidebar-ring: var(--primitive-neutral-500);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    /* Semantic typography baseline: 16px base, 1.5 line-height. */
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  /* Visible focus ring for full keyboard navigation. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
