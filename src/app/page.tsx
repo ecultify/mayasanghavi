@@ -12,7 +12,7 @@ import { StatCardsSkeleton, CardSkeleton } from "@/components/skeletons";
 import { RunNowButton } from "@/components/run-now-button";
 import { getDayCounts } from "@/lib/services/logs";
 import { listRules } from "@/lib/services/rules";
-import { getWabaHealth } from "@/lib/meta/client";
+import { getCachedWabaHealth } from "@/lib/cache";
 import { todayInRunTz, describeNextRun } from "@/lib/time";
 import { env } from "@/lib/env";
 
@@ -109,7 +109,7 @@ async function NextRunCard() {
 
 async function HealthCard() {
   const [health, counts] = await Promise.all([
-    safe(getWabaHealth),
+    safe(getCachedWabaHealth),
     safe(getDayCounts),
   ]);
   return (

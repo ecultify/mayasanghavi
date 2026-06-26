@@ -160,6 +160,22 @@ Query params:
 
 ---
 
+## Caching and rate limits
+
+Dashboard views read the Meta and Zoho APIs through a cache layer
+(`src/lib/cache.ts`) so repeated page loads do not hit those APIs and risk rate
+limits.
+
+- Templates, WhatsApp account health, and Zoho leads are cached for 6 hours and
+  then refreshed automatically on the next request (stale while revalidate).
+- Writes invalidate the matching cache immediately: creating or deleting a
+  template refreshes the template cache, and adding a lead refreshes the leads
+  cache, so new data appears at once.
+- The Templates page has a Refresh button that forces a fresh pull from Meta on
+  demand (bypassing the 6 hour window).
+- The daily worker (POST /api/run) deliberately bypasses the cache and reads
+  live Zoho data, so sends are never based on stale records.
+
 ## API reference
 
 Every endpoint requires `Authorization: Bearer $ADMIN_TOKEN` and returns clean

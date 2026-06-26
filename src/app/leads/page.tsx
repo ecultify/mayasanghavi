@@ -2,13 +2,13 @@ import { Suspense } from "react";
 import { PageHeader, ErrorState } from "@/components/page-header";
 import { TableSkeleton } from "@/components/skeletons";
 import { LeadsTable } from "@/components/leads/leads-table";
-import { listLeadsPage } from "@/lib/zoho/client";
+import { getCachedLeadsPage } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
 async function LeadsData() {
   try {
-    const page = await listLeadsPage();
+    const page = await getCachedLeadsPage();
     return (
       <LeadsTable
         initialRows={page.rows}

@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -20,7 +21,7 @@ import {
 import { TemplateQualityLabel } from "@/components/templates/quality-label";
 import { EmptyState } from "@/components/page-header";
 import { DeleteConfirm } from "@/components/delete-confirm";
-import { deleteTemplateAction } from "@/app/actions";
+import { deleteTemplateAction, refreshTemplatesAction } from "@/app/actions";
 import type { NormalizedTemplate } from "@/lib/meta/types";
 
 export function TemplatesManager({
@@ -29,6 +30,7 @@ export function TemplatesManager({
   initialTemplates: NormalizedTemplate[];
 }) {
   const router = useRouter();
+  const [refreshing, setRefreshing] = React.useState(false);
 
   async function removeTemplate(name: string) {
     const res = await deleteTemplateAction(name);
@@ -40,16 +42,26 @@ export function TemplatesManager({
     router.refresh();
   }
 
+  // Force a fresh pull from Meta (bypasses the 6 hour cache).
+  async function refresh() {
+    setRefreshing(true);
+    await refreshTemplatesAction();
+    router.refresh();
+    setRefreshing(false);
+    toast.success("Pulled the latest templates from Meta.");
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end gap-2">
         <Button
           variant="outline"
-          onClick={() => router.refresh()}
+          onClick={refresh}
+          disabled={refreshing}
           aria-label="Refresh templates"
         >
           <RefreshCw className="h-4 w-4" />
-          Refresh
+          {refreshing ? "Refreshing..." : "Refresh"}
         </Button>
         <Button asChild>
           <Link href="/templates/new">

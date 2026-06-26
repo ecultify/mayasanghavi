@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { PageHeader, ErrorState } from "@/components/page-header";
 import { ToolbarSkeleton, TableSkeleton } from "@/components/skeletons";
 import { TemplatesManager } from "@/components/templates/templates-manager";
-import { listTemplates } from "@/lib/meta/client";
+import { getCachedTemplates } from "@/lib/cache";
 import type { NormalizedTemplate } from "@/lib/meta/types";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ async function TemplatesData() {
   let templates: NormalizedTemplate[] = [];
   let error: string | null = null;
   try {
-    templates = await listTemplates();
+    templates = await getCachedTemplates();
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
   }

@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { getCachedLeadsPage, CACHE_TAGS } from "@/lib/cache";
 import {
   listRules,
   createRule,
@@ -18,7 +19,7 @@ import {
 } from "@/lib/meta/client";
 import type { CreateTemplateInput } from "@/lib/meta/types";
 import { sendTemplate } from "@/lib/meta/client";
-import { listLeadsPage, createLead } from "@/lib/zoho/client";
+import { createLead } from "@/lib/zoho/client";
 import type { CreateLeadInput } from "@/lib/zoho/client";
 import { normalizeMobile } from "@/lib/phone";
 import { runWorker } from "@/lib/worker";
@@ -144,6 +145,7 @@ export async function createTemplateAction(
         }`,
       };
     }
+    revalidateTag(CACHE_TAGS.templates);
     revalidatePath("/templates");
     revalidatePath("/rules");
     return { ok: true, data: { status: result.status, id: result.id } };
@@ -158,6 +160,7 @@ export async function deleteTemplateAction(name: string): Promise<ActionResult> 
     if (!result.ok) {
       return { ok: false, error: result.errorDetail ?? "Delete failed" };
     }
+    revalidateTag(CACHE_TAGS.templates);
     revalidatePath("/templates");
     return { ok: true, data: { name } };
   } catch (err) {
@@ -198,7 +201,9 @@ export async function fetchLeadsAction(
   search?: string | null,
 ): Promise<ActionResult> {
   try {
-    const page = await listLeadsPage(pageToken, search);
+    // Read through the 6 hour cache so browsing and searching do not hit Zoho
+    // on every interaction.
+    const page = await getCachedLeadsPage(pageToken, search);
     return { ok: true, data: page };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
@@ -216,10 +221,25 @@ export async function createLeadAction(
       ...input,
       Last_Name: input.Last_Name.trim(),
     });
+    // The new lead must show up immediately, so drop the cached lead pages.
+    revalidateTag(CACHE_TAGS.leads);
     return { ok: true, data: result };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+// Force a fresh pull from the integrations, bypassing the 6 hour cache. Used by
+// the manual Refresh controls so staff can pull the latest on demand.
+export async function refreshTemplatesAction(): Promise<ActionResult> {
+  revalidateTag(CACHE_TAGS.templates);
+  revalidatePath("/templates");
+  return { ok: true, data: null };
+}
+
+export async function refreshLeadsAction(): Promise<ActionResult> {
+  revalidateTag(CACHE_TAGS.leads);
+  return { ok: true, data: null };
 }
 
 // ================ Manual test send ================

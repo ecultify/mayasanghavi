@@ -21,7 +21,8 @@ async function graphFetch(
       Authorization: `Bearer ${env.waToken()}`,
       ...(init.headers ?? {}),
     },
-    cache: "no-store",
+    // Next 15 leaves fetch uncached by default; the cache layer (src/lib/cache.ts)
+    // memoizes results for views, while the worker reads live.
   });
 }
 
@@ -338,7 +339,6 @@ export async function uploadSampleMedia(
       "Content-Type": "application/octet-stream",
     },
     body: bytes instanceof Buffer ? new Uint8Array(bytes) : new Uint8Array(bytes),
-    cache: "no-store",
   });
   const uploadPayload = (await uploadRes.json()) as
     | { h?: string }

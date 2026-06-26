@@ -22,7 +22,6 @@ async function mintAccessToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
-    cache: "no-store",
   });
 
   const data = (await res.json()) as {
@@ -65,7 +64,6 @@ async function zohoFetch(
       ...(init.headers ?? {}),
       Authorization: `Zoho-oauthtoken ${token}`,
     },
-    cache: "no-store",
   });
 
   if (res.status === 401 && !retried) {
@@ -269,8 +267,10 @@ export async function listLeadsPage(
 ): Promise<LeadsPage> {
   const term = search ? sanitizeSearch(search) : "";
   // COQL needs a WHERE clause; id is always present, so the default returns all.
+  // Zoho COQL allows at most two conditions per parenthesis group, so the four
+  // search fields must be nested in pairs rather than flat (A or B or C or D).
   const where = term
-    ? `(First_Name like '%${term}%' or Last_Name like '%${term}%' or Mobile like '%${term}%' or Email like '%${term}%')`
+    ? `((First_Name like '%${term}%' or Last_Name like '%${term}%') or (Mobile like '%${term}%' or Email like '%${term}%'))`
     : "id is not null";
   const query = `select ${SELECT_FIELDS} from Leads where ${where} order by Last_Name limit 100`;
   const { rows, moreRecords, nextPageToken } = await coqlQueryPage(

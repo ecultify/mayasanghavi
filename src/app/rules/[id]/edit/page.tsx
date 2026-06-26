@@ -6,7 +6,7 @@ import { CardSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { RuleForm } from "@/components/rules/rule-form";
 import { getRule } from "@/lib/services/rules";
-import { listTemplates } from "@/lib/meta/client";
+import { getCachedApprovedTemplates } from "@/lib/cache";
 import type { NormalizedTemplate } from "@/lib/meta/types";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +20,7 @@ async function EditRuleData({ id }: { id: number }) {
   let templates: NormalizedTemplate[] = [];
   let templatesError: string | null = null;
   try {
-    templates = (await listTemplates()).filter(
-      (t) => t.status.toUpperCase() === "APPROVED",
-    );
+    templates = await getCachedApprovedTemplates();
   } catch (err) {
     templatesError = err instanceof Error ? err.message : String(err);
   }
