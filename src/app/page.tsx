@@ -123,8 +123,11 @@ async function HealthCard() {
           <dl className="grid grid-cols-2 gap-4">
             <div>
               <dt className="text-sm text-muted-foreground">Messaging tier</dt>
-              <dd className="font-medium">
-                {health.data.messagingLimitTier ?? "Unknown"}
+              <dd>
+                <MessagingTier
+                  tier={health.data.messagingLimitTier}
+                  codeVerificationStatus={health.data.codeVerificationStatus}
+                />
               </dd>
             </div>
             <div>
@@ -182,6 +185,45 @@ export default function OverviewPage() {
       </div>
     </div>
   );
+}
+
+// Readable labels for Meta's messaging limit tiers.
+const TIER_LABELS: Record<string, string> = {
+  TIER_50: "50 per day",
+  TIER_250: "250 per day",
+  TIER_1K: "1,000 per day",
+  TIER_10K: "10,000 per day",
+  TIER_100K: "100,000 per day",
+  TIER_UNLIMITED: "Unlimited",
+};
+
+// Meta omits messaging_limit_tier when no tier is assigned (typically when the
+// number is not verified). Show a meaningful label instead of a bare "Unknown".
+function MessagingTier({
+  tier,
+  codeVerificationStatus,
+}: {
+  tier: string | null;
+  codeVerificationStatus: string | null;
+}) {
+  const value = (tier ?? "").trim();
+  if (value) {
+    return (
+      <span className="font-medium">
+        {TIER_LABELS[value.toUpperCase()] ?? value}
+      </span>
+    );
+  }
+
+  // No tier returned: explain why rather than showing "Unknown".
+  if ((codeVerificationStatus ?? "").toUpperCase() !== "VERIFIED") {
+    return (
+      <span className="font-medium text-muted-foreground">
+        Not set (number not verified)
+      </span>
+    );
+  }
+  return <span className="font-medium">Standard</span>;
 }
 
 function QualityBadge({ rating }: { rating: string | null }) {

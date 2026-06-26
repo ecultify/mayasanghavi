@@ -178,17 +178,18 @@ export function TemplateForm() {
   }
 
   return (
-    <Card className="max-w-2xl">
-      <CardHeader>
-        <CardTitle>Template details</CardTitle>
-        <CardDescription>
-          Build a template and submit it to Meta for approval. Approval can take
-          a few minutes to a few hours.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4">
-          {/* Name + language */}
+    <form onSubmit={onSubmit} className="space-y-6">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Template details</CardTitle>
+            <CardDescription>
+              Build a template and submit it to Meta for approval. Approval can
+              take a few minutes to a few hours.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Name + language */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="tpl-name">Name</Label>
@@ -431,21 +432,110 @@ export function TemplateForm() {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push("/templates")}
-              disabled={submitting}
+          </CardContent>
+        </Card>
+
+        {/* Live preview fills the right column so the page uses the full width. */}
+        <Card className="lg:sticky lg:top-16">
+          <CardHeader>
+            <CardTitle>Preview</CardTitle>
+            <CardDescription>Approximate WhatsApp appearance.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TemplatePreview
+              headerType={headerType}
+              headerText={headerText}
+              previewUrl={previewUrl}
+              body={body}
+              bodyExample={bodyExample}
+              footer={footer}
+              buttons={buttons}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push("/templates")}
+          disabled={submitting}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={submitting || uploading}>
+          {submitting ? "Submitting..." : "Submit to Meta"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// Lightweight WhatsApp style preview of the template being built.
+function TemplatePreview({
+  headerType,
+  headerText,
+  previewUrl,
+  body,
+  bodyExample,
+  footer,
+  buttons,
+}: {
+  headerType: HeaderType;
+  headerText: string;
+  previewUrl: string | null;
+  body: string;
+  bodyExample: string;
+  footer: string;
+  buttons: TemplateButton[];
+}) {
+  const renderedBody = body
+    ? body.replace(/\{\{\s*\d+\s*\}\}/g, bodyExample.trim() || "Name")
+    : "Your message text appears here.";
+
+  return (
+    <div className="rounded-lg bg-muted/40 p-3">
+      <div className="ml-auto max-w-xs rounded-lg rounded-tr-sm bg-card p-3 shadow-sm">
+        {headerType === "IMAGE" ? (
+          previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt="Header preview"
+              className="mb-2 h-32 w-full rounded-md object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="mb-2 flex h-32 w-full items-center justify-center rounded-md border border-dashed text-xs text-muted-foreground">
+              Image header
+            </div>
+          )
+        ) : null}
+
+        {headerType === "TEXT" && headerText ? (
+          <p className="mb-1 font-semibold">{headerText}</p>
+        ) : null}
+
+        <p className="whitespace-pre-wrap text-sm">{renderedBody}</p>
+
+        {footer ? (
+          <p className="mt-2 text-xs text-muted-foreground">{footer}</p>
+        ) : null}
+      </div>
+
+      {buttons.length ? (
+        <div className="mx-auto mt-2 flex max-w-xs flex-col gap-1">
+          {buttons.map((b, i) => (
+            <div
+              key={i}
+              className="rounded-md bg-card py-2 text-center text-sm font-medium text-primary shadow-sm"
             >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting || uploading}>
-              {submitting ? "Submitting..." : "Submit to Meta"}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              {b.text || (b.type === "URL" ? "Visit" : "Reply")}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

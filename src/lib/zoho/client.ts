@@ -255,13 +255,24 @@ export interface LeadsPage {
   nextPageToken: string | null;
 }
 
-// Fetch one page of Leads ordered by Last_Name (200 per page), with cursor
-// pagination. Reuses the shared auth and COQL helpers (no duplicated token logic).
+// Strip characters that would break a COQL string literal.
+function sanitizeSearch(term: string): string {
+  return term.replace(/['"\\%]/g, " ").trim();
+}
+
+// Fetch one page of Leads ordered by Last_Name (100 per page), with cursor
+// pagination and an optional search across name, mobile, and email. Reuses the
+// shared auth and COQL helpers (no duplicated token logic).
 export async function listLeadsPage(
   pageToken?: string | null,
+  search?: string | null,
 ): Promise<LeadsPage> {
-  // COQL needs a WHERE clause; id is always present, so this returns all leads.
-  const query = `select ${SELECT_FIELDS} from Leads where id is not null order by Last_Name limit 200`;
+  const term = search ? sanitizeSearch(search) : "";
+  // COQL needs a WHERE clause; id is always present, so the default returns all.
+  const where = term
+    ? `(First_Name like '%${term}%' or Last_Name like '%${term}%' or Mobile like '%${term}%' or Email like '%${term}%')`
+    : "id is not null";
+  const query = `select ${SELECT_FIELDS} from Leads where ${where} order by Last_Name limit 100`;
   const { rows, moreRecords, nextPageToken } = await coqlQueryPage(
     query,
     pageToken,
@@ -279,6 +290,74 @@ export async function listLeadsPage(
     moreRecords,
     nextPageToken,
   };
+}
+
+export interface CreateLeadInput {
+  First_Name?: string | null;
+  Last_Name: string; // required by Zoho
+  Mobile?: string | null;
+  Email?: string | null;
+  Date_of_Birth?: string | null; // YYYY-MM-DD
+  Anniversary_Date?: string | null; // YYYY-MM-DD
+  tag?: string | null;
+}
+
+// Create a Lead, then apply a tag via the Zoho add_tags action (tags are a
+// separate API from record fields). Returns the new record id and applied tag.
+export async function createLead(
+  input: CreateLeadInput,
+): Promise<{ id: string; tag: string | null }> {
+  const record: Record<string, unknown> = { Last_Name: input.Last_Name };
+  if (input.First_Name) record.First_Name = input.First_Name;
+  if (input.Mobile) record.Mobile = input.Mobile;
+  if (input.Email) record.Email = input.Email;
+  if (input.Date_of_Birth) record.Date_of_Birth = input.Date_of_Birth;
+  if (input.Anniversary_Date) record.Anniversary_Date = input.Anniversary_Date;
+
+  const res = await zohoFetch("/crm/v8/Leads", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data: [record] }),
+  });
+  const data = (await res.json()) as {
+    data?: Array<{
+      code?: string;
+      status?: string;
+      message?: string;
+      details?: { id?: string };
+    }>;
+  };
+  const first = data.data?.[0];
+  if (!res.ok || first?.status !== "success" || !first.details?.id) {
+    throw new Error(
+      `Zoho create lead failed: ${first?.message ?? `HTTP ${res.status}`}`,
+    );
+  }
+  const id = first.details.id;
+
+  // Apply the tag (best effort). A tag failure should not undo the created lead.
+  // Zoho's add_tags action is module level (ids + tag_names) and also requires a
+  // JSON body, so we send both.
+  let appliedTag: string | null = null;
+  const tag = input.tag?.trim();
+  if (tag) {
+    const params = new URLSearchParams({
+      ids: id,
+      tag_names: tag,
+      over_write: "false",
+    });
+    const tagRes = await zohoFetch(
+      `/crm/v8/Leads/actions/add_tags?${params.toString()}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: [{ name: tag }] }),
+      },
+    );
+    if (tagRes.ok) appliedTag = tag;
+  }
+
+  return { id, tag: appliedTag };
 }
 
 // Query one or both modules (Contacts, Leads, or both) for a month/day match.

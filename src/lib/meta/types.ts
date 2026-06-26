@@ -43,6 +43,7 @@ export interface MetaTemplate {
   language: string;
   components: TemplateComponent[];
   rejected_reason?: string;
+  quality_score?: { score?: string; date?: number };
 }
 
 // Normalized shape the dashboard consumes (detected variable + header info).
@@ -59,6 +60,8 @@ export interface NormalizedTemplate {
   footerText: string | null;
   buttons: TemplateButton[];
   rejectedReason: string | null;
+  // Meta returns UNKNOWN/NONE until the template has been delivered enough.
+  qualityScore: string | null;
 }
 
 export interface WabaHealth {
@@ -66,6 +69,7 @@ export interface WabaHealth {
   messagingLimitTier: string | null;
   verifiedName: string | null;
   displayPhoneNumber: string | null;
+  codeVerificationStatus: string | null;
 }
 
 export interface SendResult {

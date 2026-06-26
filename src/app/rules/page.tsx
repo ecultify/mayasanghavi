@@ -1,61 +1,73 @@
 import { Suspense } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { PageHeader, ErrorState } from "@/components/page-header";
-import { ToolbarSkeleton, TableSkeleton } from "@/components/skeletons";
+import { TableSkeleton } from "@/components/skeletons";
+import { Button } from "@/components/ui/button";
 import { RulesManager } from "@/components/rules/rules-manager";
+import { RunHistory } from "@/components/rules/run-history";
 import { listRules } from "@/lib/services/rules";
-import { listTemplates } from "@/lib/meta/client";
-import type { NormalizedTemplate } from "@/lib/meta/types";
-import type { Rule } from "@/lib/db/schema";
+import { listRunSummaries } from "@/lib/services/runs";
 
 export const dynamic = "force-dynamic";
 
 async function RulesData() {
-  let rules: Rule[] = [];
-  let rulesError: string | null = null;
   try {
-    rules = await listRules();
+    const rules = await listRules();
+    return <RulesManager initialRules={rules} />;
   } catch (err) {
-    rulesError = err instanceof Error ? err.message : String(err);
-  }
-  if (rulesError) return <ErrorState message={rulesError} />;
-
-  // A Meta failure should not block rule editing; the dropdown just stays empty.
-  let templates: NormalizedTemplate[] = [];
-  let templatesError: string | null = null;
-  try {
-    templates = (await listTemplates()).filter(
-      (t) => t.status.toUpperCase() === "APPROVED",
+    return (
+      <ErrorState message={err instanceof Error ? err.message : String(err)} />
     );
-  } catch (err) {
-    templatesError = err instanceof Error ? err.message : String(err);
   }
+}
 
-  return (
-    <RulesManager
-      initialRules={rules}
-      templates={templates}
-      templatesError={templatesError}
-    />
-  );
+async function RunHistoryData() {
+  try {
+    const rows = await listRunSummaries();
+    return <RunHistory rows={rows} />;
+  } catch (err) {
+    return (
+      <ErrorState message={err instanceof Error ? err.message : String(err)} />
+    );
+  }
 }
 
 export default function RulesPage() {
   return (
-    <div>
-      <PageHeader
-        title="Automation rules"
-        description="Each enabled rule queries Zoho daily and sends an approved WhatsApp template to every matching, deduped recipient."
-      />
-      <Suspense
-        fallback={
-          <div className="space-y-4">
-            <ToolbarSkeleton />
-            <TableSkeleton rows={5} cols={7} />
-          </div>
-        }
-      >
-        <RulesData />
-      </Suspense>
+    <div className="space-y-10">
+      <section>
+        <PageHeader
+          title="Automation rules"
+          description="Each enabled rule queries Zoho daily and sends an approved WhatsApp template to every matching, deduped recipient."
+          action={
+            <Button asChild>
+              <Link href="/rules/new">
+                <Plus className="h-4 w-4" />
+                New rule
+              </Link>
+            </Button>
+          }
+        />
+        <Suspense fallback={<TableSkeleton rows={4} cols={7} />}>
+          <RulesData />
+        </Suspense>
+      </section>
+
+      <section>
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold tracking-tight">
+            Recent automation runs
+          </h2>
+          <p className="text-muted-foreground">
+            When each rule ran and what happened in that execution (matched,
+            sent, failed, deduped, invalid).
+          </p>
+        </div>
+        <Suspense fallback={<TableSkeleton rows={5} cols={9} />}>
+          <RunHistoryData />
+        </Suspense>
+      </section>
     </div>
   );
 }

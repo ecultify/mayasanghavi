@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
-import { Pencil, Trash2, Plus, Play } from "lucide-react";
+import { Pencil, Trash2, Play } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -22,7 +23,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { EmptyState } from "@/components/page-header";
-import { RuleDialog } from "@/components/rules/rule-dialog";
 import { DeleteConfirm } from "@/components/delete-confirm";
 import {
   updateRuleAction,
@@ -30,31 +30,10 @@ import {
   runNowAction,
 } from "@/app/actions";
 import type { Rule } from "@/lib/db/schema";
-import type { NormalizedTemplate } from "@/lib/meta/types";
 
-export function RulesManager({
-  initialRules,
-  templates,
-  templatesError,
-}: {
-  initialRules: Rule[];
-  templates: NormalizedTemplate[];
-  templatesError: string | null;
-}) {
+export function RulesManager({ initialRules }: { initialRules: Rule[] }) {
   const router = useRouter();
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [editing, setEditing] = React.useState<Rule | null>(null);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
-
-  function openCreate() {
-    setEditing(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit(rule: Rule) {
-    setEditing(rule);
-    setDialogOpen(true);
-  }
 
   async function toggleEnabled(rule: Rule, enabled: boolean) {
     setTogglingId(rule.id);
@@ -97,20 +76,6 @@ export function RulesManager({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" />
-          New rule
-        </Button>
-      </div>
-
-      {templatesError ? (
-        <p className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-foreground">
-          Could not load templates from Meta ({templatesError}). You can still
-          edit rules, but the template dropdown is empty.
-        </p>
-      ) : null}
-
       {initialRules.length === 0 ? (
         <EmptyState message="No rules yet. Create your first birthday or anniversary rule to get started." />
       ) : (
@@ -182,9 +147,11 @@ export function RulesManager({
                         variant="ghost"
                         size="icon"
                         aria-label={`Edit ${rule.name}`}
-                        onClick={() => openEdit(rule)}
+                        asChild
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Link href={`/rules/${rule.id}/edit`}>
+                          <Pencil className="h-4 w-4" />
+                        </Link>
                       </Button>
                       <DeleteConfirm
                         title={`Delete "${rule.name}"?`}
@@ -208,13 +175,6 @@ export function RulesManager({
           </Table>
         </div>
       )}
-
-      <RuleDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        editing={editing}
-        templates={templates}
-      />
     </div>
   );
 }

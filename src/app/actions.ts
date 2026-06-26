@@ -18,7 +18,8 @@ import {
 } from "@/lib/meta/client";
 import type { CreateTemplateInput } from "@/lib/meta/types";
 import { sendTemplate } from "@/lib/meta/client";
-import { listLeadsPage } from "@/lib/zoho/client";
+import { listLeadsPage, createLead } from "@/lib/zoho/client";
+import type { CreateLeadInput } from "@/lib/zoho/client";
 import { normalizeMobile } from "@/lib/phone";
 import { runWorker } from "@/lib/worker";
 import { db } from "@/lib/db";
@@ -194,10 +195,28 @@ export async function uploadMediaAction(
 
 export async function fetchLeadsAction(
   pageToken?: string | null,
+  search?: string | null,
 ): Promise<ActionResult> {
   try {
-    const page = await listLeadsPage(pageToken);
+    const page = await listLeadsPage(pageToken, search);
     return { ok: true, data: page };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function createLeadAction(
+  input: CreateLeadInput,
+): Promise<ActionResult> {
+  if (!input.Last_Name || !input.Last_Name.trim()) {
+    return { ok: false, error: "Last name is required by Zoho." };
+  }
+  try {
+    const result = await createLead({
+      ...input,
+      Last_Name: input.Last_Name.trim(),
+    });
+    return { ok: true, data: result };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }

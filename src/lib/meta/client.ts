@@ -154,6 +154,7 @@ export function normalizeTemplate(t: MetaTemplate): NormalizedTemplate {
     footerText,
     buttons,
     rejectedReason: t.rejected_reason ?? null,
+    qualityScore: t.quality_score?.score ?? null,
   };
 }
 
@@ -164,7 +165,8 @@ export async function listTemplates(): Promise<NormalizedTemplate[]> {
 
   do {
     const params = new URLSearchParams({
-      fields: "name,status,language,category,components,rejected_reason",
+      fields:
+        "name,status,language,category,components,rejected_reason,quality_score",
       limit: "100",
     });
     if (after) params.set("after", after);
@@ -354,7 +356,8 @@ export async function uploadSampleMedia(
 
 export async function getWabaHealth(): Promise<WabaHealth> {
   const params = new URLSearchParams({
-    fields: "quality_rating,messaging_limit_tier,verified_name,display_phone_number",
+    fields:
+      "verified_name,display_phone_number,quality_rating,messaging_limit_tier,code_verification_status",
   });
   const res = await graphFetch(
     `/${env.waPhoneNumberId()}?${params.toString()}`,
@@ -368,11 +371,13 @@ export async function getWabaHealth(): Promise<WabaHealth> {
     messaging_limit_tier?: string;
     verified_name?: string;
     display_phone_number?: string;
+    code_verification_status?: string;
   };
   return {
     qualityRating: data.quality_rating ?? null,
     messagingLimitTier: data.messaging_limit_tier ?? null,
     verifiedName: data.verified_name ?? null,
     displayPhoneNumber: data.display_phone_number ?? null,
+    codeVerificationStatus: data.code_verification_status ?? null,
   };
 }

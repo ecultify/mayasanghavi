@@ -17,6 +17,7 @@ import {
   TemplateStatusBadge,
   CategoryBadge,
 } from "@/components/status-badge";
+import { TemplateQualityLabel } from "@/components/templates/quality-label";
 import { EmptyState } from "@/components/page-header";
 import { DeleteConfirm } from "@/components/delete-confirm";
 import { deleteTemplateAction } from "@/app/actions";
@@ -93,6 +94,7 @@ export function TemplatesManager({
                   <TableCell>
                     <div className="space-y-1">
                       <TemplateStatusBadge status={t.status} />
+                      <TemplateQualityLabel score={t.qualityScore} />
                       {t.rejectedReason ? (
                         <p className="max-w-48 text-xs text-destructive">
                           {t.rejectedReason}
