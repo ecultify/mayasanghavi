@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader, ErrorState } from "@/components/page-header";
 import { StatCardsSkeleton, CardSkeleton } from "@/components/skeletons";
 import { RunNowButton } from "@/components/run-now-button";
-import { getDayCounts } from "@/lib/services/logs";
+import { getDayCounts, getOverallCounts } from "@/lib/services/logs";
 import { listRules } from "@/lib/services/rules";
 import { getCachedWabaHealth } from "@/lib/cache";
 import { todayInRunTz, describeNextRun } from "@/lib/time";
@@ -60,21 +60,35 @@ function StatCard({
 // Each async section fetches independently and is wrapped in its own Suspense
 // boundary, so the page shell renders instantly and slow integrations (Meta)
 // stream in without blocking the rest of the page.
+function CountsGrid({
+  counts,
+}: {
+  counts: { matched: number; sent: number; failed: number; deduped: number };
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <StatCard label="Matched" value={counts.matched} />
+      <StatCard label="Sent" value={counts.sent} tone="success" />
+      <StatCard
+        label="Failed"
+        value={counts.failed}
+        tone={counts.failed > 0 ? "destructive" : "default"}
+      />
+      <StatCard label="Deduped" value={counts.deduped} />
+    </div>
+  );
+}
+
+async function OverallCounts() {
+  const counts = await safe(getOverallCounts);
+  if (!counts.ok) return <ErrorState message={counts.error} />;
+  return <CountsGrid counts={counts.data} />;
+}
+
 async function TodayCounts() {
   const counts = await safe(getDayCounts);
   if (!counts.ok) return <ErrorState message={counts.error} />;
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <StatCard label="Matched" value={counts.data.matched} />
-      <StatCard label="Sent" value={counts.data.sent} tone="success" />
-      <StatCard
-        label="Failed"
-        value={counts.data.failed}
-        tone={counts.data.failed > 0 ? "destructive" : "default"}
-      />
-      <StatCard label="Deduped" value={counts.data.deduped} />
-    </div>
-  );
+  return <CountsGrid counts={counts.data} />;
 }
 
 async function NextRunCard() {
@@ -168,8 +182,15 @@ export default function OverviewPage() {
         action={<RunNowButton />}
       />
 
+      <section aria-label="All time delivery counts" className="mb-8">
+        <h2 className="mb-3 text-lg font-semibold">All time</h2>
+        <Suspense fallback={<StatCardsSkeleton />}>
+          <OverallCounts />
+        </Suspense>
+      </section>
+
       <section aria-label="Today's delivery counts" className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold">Today</h2>
+        <h2 className="mb-3 text-lg font-semibold">Today ({today})</h2>
         <Suspense fallback={<StatCardsSkeleton />}>
           <TodayCounts />
         </Suspense>

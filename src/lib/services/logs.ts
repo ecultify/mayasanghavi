@@ -74,3 +74,39 @@ export async function getDayCounts(date?: string): Promise<DayCounts> {
 
   return counts;
 }
+
+// All time totals across every run and every date. Used by the Overview so the
+// dashboard reflects the full history, not just whatever happened today.
+export async function getOverallCounts(): Promise<DayCounts> {
+  const logRows = await db
+    .select({
+      status: sendLog.status,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(sendLog)
+    .groupBy(sendLog.status);
+
+  const summaryRows = await db
+    .select({
+      matched: sql<number>`coalesce(sum(${runSummary.matched}), 0)::int`,
+      deduped: sql<number>`coalesce(sum(${runSummary.deduped}), 0)::int`,
+    })
+    .from(runSummary);
+
+  const counts: DayCounts = {
+    matched: summaryRows[0]?.matched ?? 0,
+    sent: 0,
+    failed: 0,
+    deduped: summaryRows[0]?.deduped ?? 0,
+    skippedInvalid: 0,
+  };
+
+  for (const row of logRows) {
+    if (row.status === "sent") counts.sent = row.count;
+    else if (row.status === "failed") counts.failed = row.count;
+    else if (row.status === "skipped_invalid") counts.skippedInvalid += row.count;
+    else if (row.status === "skipped_dupe") counts.deduped += row.count;
+  }
+
+  return counts;
+}

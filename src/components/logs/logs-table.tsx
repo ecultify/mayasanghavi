@@ -57,14 +57,13 @@ const STATUSES = [
 export function LogsTable({
   initialRows,
   rules,
-  defaultDate,
 }: {
   initialRows: LogRow[];
   rules: Array<{ id: number; name: string }>;
-  defaultDate: string;
 }) {
   const [rows, setRows] = React.useState<LogRow[]>(initialRows);
-  const [date, setDate] = React.useState(defaultDate);
+  // Empty date means show all logs across every date (the default view).
+  const [date, setDate] = React.useState("");
   const [status, setStatus] = React.useState("all");
   const [ruleId, setRuleId] = React.useState("all");
   const [loading, setLoading] = React.useState(false);
@@ -112,14 +111,26 @@ export function LogsTable({
       {/* Filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
         <div className="space-y-2">
-          <Label htmlFor="log-date">Date</Label>
-          <Input
-            id="log-date"
-            type="date"
-            value={date}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="sm:w-44"
-          />
+          <Label htmlFor="log-date">Date (optional filter)</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="log-date"
+              type="date"
+              value={date}
+              onChange={(e) => onDateChange(e.target.value)}
+              className="sm:w-44"
+            />
+            {date ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onDateChange("")}
+                aria-label="Clear date filter"
+              >
+                Clear
+              </Button>
+            ) : null}
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="log-status">Status</Label>
@@ -171,12 +182,19 @@ export function LogsTable({
       ) : error ? (
         <ErrorState message={error} />
       ) : rows.length === 0 ? (
-        <EmptyState message="No log entries match these filters." />
+        <EmptyState
+          message={
+            date || status !== "all" || ruleId !== "all"
+              ? "No log entries match these filters."
+              : "No log entries yet. They appear here after a run or a manual test."
+          }
+        />
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Recipient</TableHead>
                 <TableHead>Number</TableHead>
@@ -188,6 +206,9 @@ export function LogsTable({
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.id}>
+                  <TableCell className="whitespace-nowrap font-medium tabular-nums">
+                    {row.runDate}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                     {new Date(row.createdAt).toLocaleTimeString()}
                   </TableCell>

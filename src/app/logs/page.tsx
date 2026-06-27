@@ -6,22 +6,19 @@ import { LogsTable, type LogRow } from "@/components/logs/logs-table";
 import { listLogs } from "@/lib/services/logs";
 import { listRules } from "@/lib/services/rules";
 import { explainMetaError } from "@/lib/meta/errors";
-import { todayInRunTz } from "@/lib/time";
 import type { Rule } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 
 async function LogsData() {
-  const today = todayInRunTz();
   let rows: LogRow[] = [];
   let rules: Rule[] = [];
   let error: string | null = null;
 
   try {
-    const [logs, ruleList] = await Promise.all([
-      listLogs({ date: today }),
-      listRules(),
-    ]);
+    // Default view: every log across all dates, newest first. The Date column
+    // shows when each entry came in; the date box narrows to one day on demand.
+    const [logs, ruleList] = await Promise.all([listLogs({}), listRules()]);
     rows = logs.map((r) => ({
       ...r,
       createdAt: r.createdAt.toISOString(),
@@ -37,7 +34,6 @@ async function LogsData() {
     <LogsTable
       initialRows={rows}
       rules={rules.map((r) => ({ id: r.id, name: r.name }))}
-      defaultDate={today}
     />
   );
 }
@@ -47,7 +43,7 @@ export default function LogsPage() {
     <div>
       <PageHeader
         title="Delivery logs"
-        description="Every send attempt, with Meta error codes explained. Defaults to today."
+        description="Every send attempt across all dates, newest first. Use the date filter to narrow to a single day."
       />
       <Suspense
         fallback={
@@ -58,7 +54,7 @@ export default function LogsPage() {
               <Skeleton className="h-9 w-52" />
               <Skeleton className="h-9 w-24" />
             </div>
-            <TableSkeleton rows={8} cols={6} />
+            <TableSkeleton rows={8} cols={7} />
           </div>
         }
       >
