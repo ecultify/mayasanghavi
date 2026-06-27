@@ -407,9 +407,19 @@ will use it as `DATABASE_URL`.
    - Non-secret defaults can be left to `.env.example` values or set explicitly:
      `WA_PHONE_NUMBER_ID`, `WA_WABA_ID`, `WA_APP_ID`, `ZOHO_CLIENT_ID`,
      `RUN_TIMEZONE`.
-3. Deploy. Then apply the schema once. Either run `npm run db:push` locally with
-   `DATABASE_URL` pointed at the Railway database, or run it as a one-off command
-   in Railway.
+   - Set `DATABASE_URL` as a Railway reference to the Postgres service, for
+     example `${{Postgres.DATABASE_URL}}`, so it always points at the right
+     database over the private network.
+3. Deploy. The schema is created automatically: the start command runs the
+   committed migrations (`node scripts/migrate.mjs`) before `next start`, so the
+   `rules`, `send_log`, and `run_summary` tables exist before traffic is served.
+   This is idempotent and safe to run on every deploy. (To apply the schema by
+   hand instead, run `npm run db:migrate` or `npm run db:push` locally with
+   `DATABASE_URL` pointed at the Railway database public URL.)
+
+   If logs and run history are not saving, it is almost always because the web
+   service has no `DATABASE_URL` or the deploy predates setting it: confirm the
+   variable is set on the web service and redeploy, which runs the migration.
 
 ### 3. Cron service (daily run)
 

@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/migrate.mjs && next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "db:migrate": "node scripts/migrate.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
